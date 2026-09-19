@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerenciador de Links & Compartilhador</title>
+  <style>
+    :root {
+      --bg-color: #f4f6f8;
+      --card-bg: #ffffff;
+      --text-color: #333333;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bluetooth: #0082fc;
+      --danger: #dc2626;
+      --border: #e5e7eb;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    h1, h2 {
+      text-align: center;
+      color: #1e293b;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      border: 1px solid var(--border);
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    input {
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--primary);
+    }
+
+    button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .link-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .link-item {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .link-info h3 {
+      font-size: 16px;
+      color: #0f172a;
+    }
+
+    .link-info a {
+      font-size: 14px;
+      color: var(--primary);
+      text-decoration: none;
+      word-break: break-all;
+    }
+
+    .link-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+
+    .btn-share {
+      background-color: #10b981;
+      color: white;
+      font-size: 12px;
+    }
+
+    .btn-bluetooth {
+      background-color: var(--bluetooth);
+      color: white;
+      font-size: 12px;
+    }
+
+    .btn-delete {
+      background-color: var(--danger);
+      color: white;
+      font-size: 12px;
+      margin-left: auto;
+    }
+
+    .empty-state {
+      text-align: center;
+      color: #64748b;
+      padding: 20px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Gerenciador de Links</h1>
+
+    <!-- Form de Cadastro -->
+    <div class="card">
+      <h2>Adicionar Novo Site</h2>
+      <form id="linkForm">
+        <input type="text" id="siteName" placeholder="Nome do Site (ex: Google)" required />
+        <input type="url" id="siteUrl" placeholder="URL do Site (ex: https://google.com)" required />
+        <button type="submit" class="btn-primary">Salvar no LocalStorage</button>
+      </form>
+    </div>
+
+    <!-- Lista de Links -->
+    <div class="card">
+      <h2>Meus Sites Salvos</h2>
+      <ul id="linkList" class="link-list"></ul>
+    </div>
+  </div>
+
+  <script>
+    const linkForm = document.getElementById('linkForm');
+    const siteNameInput = document.getElementById('siteName');
+    const siteUrlInput = document.getElementById('siteUrl');
+    const linkList = document.getElementById('linkList');
+
+    // Carregar links ao iniciar
+    document.addEventListener('DOMContentLoaded', loadLinks);
+
+    // Evento de envio do formulário
+    linkForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const name = siteNameInput.value.trim();
+      const url = siteUrlInput.value.trim();
+
+      if (name && url) {
+        const newLink = { id: Date.now(), name, url };
+        saveLink(newLink);
+        siteNameInput.value = '';
+        siteUrlInput.value = '';
+        loadLinks();
+      }
+    });
+
+    // Função para obter os links do LocalStorage
+    function getStoredLinks() {
+      const links = localStorage.getItem('user_links');
+      return links ? JSON.parse(links) : [];
+    }
+
+    // Guardar novo link no LocalStorage
+    function saveLink(link) {
+      const links = getStoredLinks();
+      links.push(link);
+      localStorage.setItem('user_links', JSON.stringify(links));
+    }
+
+    // Eliminar link do LocalStorage
+    function deleteLink(id) {
+      let links = getStoredLinks();
+      links = links.filter(link => link.id !== id);
+      localStorage.setItem('user_links', JSON.stringify(links));
+      loadLinks();
+    }
+
+    // Carregar e renderizar os links na tela
+    function loadLinks() {
+      const links = getStoredLinks();
+      linkList.innerHTML = '';
+
+      if (links.length === 0) {
+        linkList.innerHTML = '<li class="empty-state">Nenhum site guardado ainda.</li>';
+        return;
+      }
+
+      links.forEach(link => {
+        const li = document.createElement('li');
+        li.className = 'link-item';
+        li.innerHTML = `
+          <div class="link-info">
+            <h3>${escapeHtml(link.name)}</h3>
+            <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.url)}</a>
+          </div>
+          <div class="link-actions">
+            <button class="btn-share" onclick="shareNative('${escapeHtml(link.name)}', '${escapeHtml(link.url)}')">
+              Partilhar
+            </button>
+            <button class="btn-bluetooth" onclick="shareBluetooth('${escapeHtml(link.name)}', '${escapeHtml(link.url)}')">
+              Bluetooth
+            </button>
+            <button class="btn-delete" onclick="deleteLink(${link.id})">
+              Apagar
+            </button>
+          </div>
+        `;
+        linkList.appendChild(li);
+      });
+    }
+
+    // 1. Partilha Geral (WhatsApp, Email, Copiar, etc. via Web Share API)
+    async function shareNative(title, url) {
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: title,
+            text: `Confere este site: ${title}`,
+            url: url
+          });
+        } catch (err) {
+          if (err.name !== 'AbortError') {
+            console.error('Erro ao partilhar:', err);
+          }
+        }
+      } else {
+        // Fallback para navegadores sem suporte ao Web Share
+        navigator.clipboard.writeText(url);
+        alert('Link copiado para a área de transferência!');
+      }
+    }
+
+    // 2. Transmissão Bluetooth (Web Bluetooth API)
+    async function shareBluetooth(title, url) {
+      if (!navigator.bluetooth) {
+        alert('A API Web Bluetooth não é suportada neste navegador/dispositivo. Tente usar no Chrome em dispositivos Android ou Desktop.');
+        return;
+      }
+
+      try {
+        // Procura por dispositivos Bluetooth próximos
+        const device = await navigator.bluetooth.requestDevice({
+          acceptAllDevices: true,
+          optionalServices: ['generic_access']
+        });
+
+        alert(`Conectando ao dispositivo Bluetooth: ${device.name || 'Dispositivo Desconhecido'}\n\nNota: A API Web Bluetooth nativa estabelece conexão com periféricos LE. Para envio direto de ficheiro/texto genérico a outro smartphone, utilize a opção "Partilhar" padrão (que aciona o Bluetooth do sistema).`);
+      } catch (error) {
+        if (error.name !== 'NotFoundError') {
+          console.error('Erro de Bluetooth:', error);
+        }
+      }
+    }
+
+    // Utilitário para evitar ataques XSS
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, function(m) {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#039;'
+        }[m];
+      });
+    }
+  </script>
+</body>
+</html>
